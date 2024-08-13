@@ -1,23 +1,78 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-# from scipy.stats import norm
-# import plotly.graph_objects as go
-from numpy import log, sqrt, exp  # Make sure to import these
-import matplotlib.pyplot as plt
-# import seaborn as sns
+import numpy as np 
+from matplotlib import pyplot as plt 
+import scipy as sp
+import scipy.stats as ss
+from scipy.stats import norm
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-# TO RUN STREAMLIT CODE FROM TERMINAL streamlit run your_code.py   (ensure the file path is correct)
-#   streamlit run Desktop\Python\Projects\Problem_1\Streamlit.py
+# Function for Monte Carlo simulation of the Heston model
+def Full_Heston_Sim(S0, v0, r, k, theta, sigma, rho, T, N_steps, N_sims):
+    """
+    Performs a Monte Carlo simulation of the Heston Model under risk-neutral dynamics to price vanilla options. 
 
-#######################
+    Args:   
+            S0: Initial asset price (dollars)
+            v0: Initial asset volatility ()
+            r: Risk-free rate
+            k (kappa): Velocity of mean reversion of the variance
+            theta: Long-term variance mean
+            sigma: Volatility of the variance (vol of vol)
+            rho: Correlation factor between the asset price and variance wiener processes WS & Wv
+
+    Output: 
+            S: Asset price (type: Numpy array, Shape: (N_simulations, N_steps))
+            v: Asset volatility (type: Numpy array, Shape: (N_simulations, N_steps))
+            timeline: Simulation time array (type: Numpy array, size(N_steps), bounds(0, T))
+    """
+
+    # Initialize asset price and variance arrays, and set initial conditions
+    S = np.zeros((N_sims, N_steps))
+    v = np.zeros((N_sims, N_steps))
+    v[:, 0], S[:,0] = v0, S0
+
+    timeline = np.linspace(0, T, N_steps)   # Time array, size=N_steps
+    dt = T/(N_steps-1)                      # Time step size
+
+    mu = np.array([0, 0])       # Average value for WS & Wv. Values are 0 to represent the standard normal dist.
+    cov = np.matrix([[1, rho],  # Covanriance matrix. Diagonal elements represent the variance of each sampling process
+                    [rho, 1]])  # diagonal elements represent the correlation between the two factors
+    
+    # Creating (N_sims, N_steps) array for wiener process factors
+    W = ss.multivariate_normal.rvs(mean=mu, cov=cov, size=(N_sims, N_steps - 1))    # N_steps-1 since v0 and S0 are accounted for. 
+    WS = W[:, :, 0]  # Asset Brownian motion
+    Wv = W[:, :, 1]  # Variance Brownian motion
+
+    for j in range(N_sims):
+        for idx, i in enumerate(timeline[1:]):
+            v[j, idx+1] = np.maximum(v[j,idx] + k*(theta-v[j,idx])*dt + sigma*np.sqrt(v[j,idx]*dt) * Wv[j,idx], 0)
+            S[j, idx+1] = S[j,idx] * np.exp( (r - 0.5*v[j,idx])*dt + np.sqrt(v[j,idx]*dt)*WS[j,idx] )
+
+#     print(f"Final Variance: {np.mean(v[:,-1])} per unit time")
+#     print(f"Final Mean Asset Price: ${np.mean(S[:,-1])}")
+
+    return S, v, timeline
+
+# Initial parameters
+S0 = 100.0          
+v0 = 0.06           
+T = 1.0             
+r = .02             
+rho = -0.7          
+
+k = 3               
+theta = 0.04        
+sigma = 0.6         
+N_sims = 20
+N_steps = 100
+
 # Page configuration
 st.set_page_config(
     page_title="Monte Carlo Simulation of the Heston Model for Option Pricing",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded")
-
 
 # Sidebar for User Inputs
 with st.sidebar:
@@ -26,150 +81,80 @@ with st.sidebar:
     linkedin_url = "https://www.linkedin.com/in/grant-doherty201a/"
     st.markdown(f'<a href="{linkedin_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="25" height="25" style="vertical-align: middle; margin-right: 10px;">`Grant Doherty`</a>', unsafe_allow_html=True)
 
-    current_price = st.number_input("Initial Asset Price $S_0$ (Dollars)", value=100.0)
-    # strike = st.number_input("Strike Price $K$ (Dollars)", value=100.0)
-    volatility = st.number_input("Initial Volatility $v_0$ (Years$^{-1}$)", value=0.2)
-    time_to_maturity = st.number_input("Time to Maturity $T$ (Years)", value=1.0)
-    mean_variance = st.number_input("Long-tem mean of the volatility θ (Years$^{-1}$)")
-    interest_rate = st.number_input("Risk-Free Interest Rate $r$ (%/Year)", value=0.05)
-    wiener_correlation = st.number_input("Wiener Correlation Factor ρ")
+    S0 = st.number_input("Initial Asset Price $S_0$ (dollars)", value=S0)
+    v0 = st.number_input("Initial Volatility $v_0$ (years$^{-1}$)", value=v0)
+    T = st.number_input("Time to Maturity $T$ (years)", value=T)
+    r = st.number_input("Risk-Free Rate", value=r)
+    rho = st.number_input("Wiener Correlation Factor", value=rho)
 
-    st.markdown("---")
-    calculate_btn = st.button('Heatmap Parameters')
-    spot_min = st.number_input('Min Spot Price', min_value=0.01, value=current_price*0.8, step=0.01)
-    spot_max = st.number_input('Max Spot Price', min_value=0.01, value=current_price*1.2, step=0.01)
-    vol_min = st.slider('Min Volatility for Heatmap', min_value=0.01, max_value=1.0, value=volatility*0.5, step=0.01)
-    vol_max = st.slider('Max Volatility for Heatmap', min_value=0.01, max_value=1.0, value=volatility*1.5, step=0.01)
-    
-    spot_range = np.linspace(spot_min, spot_max, 10)
-    vol_range = np.linspace(vol_min, vol_max, 10)
+    st.markdown("<p style='font-size: 20px;'><strong>Fixed Parameters</strong></p>",
+    unsafe_allow_html=True)
 
+    st.markdown(f"Velocity of Mean Reversion: κ={k}", unsafe_allow_html=True)
+    st.markdown(f"Long-Term Mean of the Volatility: θ={theta}", unsafe_allow_html=True)
+    st.markdown(f"Volatility of the volatility: σ={sigma}", unsafe_allow_html=True)
+    st.markdown(f"Number of Simulations: N_sims={N_sims}", unsafe_allow_html=True)
+    st.markdown(f"Number of Steps per Simulation: N_steps={N_steps}", unsafe_allow_html=True)
 
-
-# def Heston_Sim(S0, v0, r, k, theta, sigma, rho, T, N_steps=100, N_sims=200):
-
-#     """
-#     Performs a Monte Carlo simulation of the Heston Model under risk-neutral dynamics to price vanilla options. 
-
-#     Args:   
-#             S0: Initial asset price (dollars)
-#             v0: Initial asset volatility ()
-#             r: Risk-free rate
-#             k (kappa): Velocity of mean reversion of the variance
-#             theta: Long-term variance mean
-#             sigma: Volatility of the variance (vol of vol)
-#             rho: Correlation factor between the asset price and variance wiener processes WS & Wv
-
-#     Output: 
-#             v_T: Average asset variance(type: Numpy array, Shape: (N_simulations, N_steps))
-#             S_T: Average asset price at maturity (type: Numpy array, Shape: (N_simulations, N_steps))
-#             timeline: Simulation time array (type: Numpy array, size(N_steps), bounds(0, T))
-#     """
-
-#     # Initialize variance and asset price arrays, and set initial conditions
-#     v = np.zeros((N_sims, N_steps))
-#     S = np.zeros((N_sims, N_steps))
-#     v[:, 0], S[:,0] = v0, S0
-
-#     timeline = np.linspace(0, T, N_steps)
-#     dt = T/(N_steps-1)
-
-#     mu = np.array([0, 0])
-#     cov = np.matrix([[1, rho],
-#                     [rho, 1]])
-#     W = ss.multivariate_normal.rvs(mean=mu, cov=cov, size=(N_sims, N_steps - 1))    # N_steps-1 since v0 and S0 are accounted for. 
-#     WS = W[:, :, 0]  # Stock Brownian motion:     W_1
-#     Wv = W[:, :, 1]  # Variance Brownian motion:  W_2
-
-#     for j in range(N_sims):
-#         for idx, i in enumerate(timeline[1:]):
-#             v[j, idx+1] = np.maximum(v[j,idx] + k*(theta-v[j,idx])*dt + sigma*np.sqrt(v[j,idx]*dt) * Wv[j,idx], 0)
-#             S[j, idx+1] = S[j,idx] * np.exp( (r - 0.5*v[j,idx])*dt + np.sqrt(v[j,idx]*dt)*WS[j,idx] )
-
-# #     print(f"Final Variance: {np.mean(v[:,-1])} per unit time")
-# #     print(f"Final Mean Asset Price: ${np.mean(S[:,-1])}")
-
-#     S_T, v_T = np.mean(S[:,-1]), np.mean(v[:,-1])
-
-#     return S_T, v, timeline
-
-
-
-
-# def heat_maps(S0=S0, v0=v0, r=r, k=k, theta=theta, sigma=sigma, rho=rho):
-
-#     K_strike = np.linspace(round(S0-S0*0.3), round(S0+S0*0.3), 10)
-#     Timeline = np.arange(0.1, 1.1, 0.1)
-
-#     puts = np.zeros((len(Timeline), len(K_strike)))
-#     calls = np.zeros((len(Timeline), len(K_strike)))
-
-#     put_ivs = np.zeros((len(Timeline), len(K_strike)))
-#     call_ivs = np.zeros((len(Timeline), len(K_strike)))
-
-
-#     S_T = np.array([Heston_Sim(S0, v0, r, k, theta, sigma, rho, T) for T in Timeline])
-
-
-#     for idB, T in enumerate(Timeline):        # GOOD CODE (i think)
-#         for idA, k in enumerate(K_strike):
-
-#             puts[idB,idA] = np.exp(-r*T)*np.mean(np.maximum(k-S_T[idB], 0))
-#             calls[idB,idA] = np.exp(-r*T)*np.mean(np.maximum(S_T[idB]-k, 0))
-
-#     # for idA, T in enumerate(Timeline):
-#     #     put_ivs[idA, :] = implied_vol(puts[idA, :], S0, K_strike, T, r, flag='p', q=0, return_as='numpy', on_error='ignore')
-#     #     call_ivs[idA, :] = implied_vol(calls[idA, :], S0, K_strike, T, r, flag='c', q=0, return_as='numpy')
-
-
-#     put_ivs = implied_vol(puts[-1, :], S0, K_strike, T[-1], r, flag='p', q=0, return_as='numpy', on_error='ignore')
-
-
-#     fig, (ax1, ax2) = plt.subplots(1,2, figsize=(20,6))
-#     put_heatmap = ax1.imshow(put, cmap='RdYlGn', interpolation='nearest')
-#     call_heatmap = ax2.imshow(call, cmap='RdYlGn', interpolation='nearest')
-#     # Add color bar
-#     fig.colorbar(put_heatmap, ax=ax1, label='Intensity')
-
-#     # Add annotations
-#     for i in range(10):
-#         for j in range(10):
-#             ax1.text(j, i, f'{put[i, j]:.2f}', ha='center', va='center', color='black')
-#             ax2.text(j, i, f'{call[i, j]:.2f}', ha='center', va='center', color='black')
-
-#     return put_ivs
-
-
-
-
-
-# Main Page for Output Display
-st.title("Heston Pricing Model")
-
-# Table of Inputs
-input_data = {
-    "Initial Asset Price": [current_price],
-    # "Strike Price": [strike],
-    "Time to Maturity": [time_to_maturity],
-    "Initial Volatility": [volatility],
-    "Risk-Free Interest Rate": [interest_rate],
-}
-input_df = pd.DataFrame(input_data)
-st.table(input_df)
-
-# Display Call and Put Values in colored tables
-col1, col2 = st.columns([1,1], gap="small")
-
-
-
-
-
-
-
+# st.markdown("")
+# st.title("Options Price - Interactive Heatmap")
+# st.info("Below is a plot of the simulation over the timeframe. This is a work in progress! I intend on providing more details on the meaningful insight in this simulation.")
 
 st.markdown("")
-st.title("Options Price - Interactive Heatmap")
-st.info("Currently working on updates... Stay tuned!")
+st.title("Simulation Overview")
+st.markdown("The Heston Model is described by a set of stochastic differential equations (SDEs) that characterize how the asset price (Equation 1) and its volatility (Equation 2) evolve over time. \
+            These equations involve two Wiener processes, $dW_{S,t}$ for the asset price and $dW_{v,t}$ for the volatility. The two Wiener processes are correlated by a factor $\\rho$, \
+            as detailed by Equation 3", unsafe_allow_html=True)
+st.markdown("""
+$$
+dS_t = rS_tdt+\sqrt{v_t}S_tdW_{S,t} \quad (1)
+$$
+""", unsafe_allow_html=True)
 
-# Interactive Sliders and Heatmaps for Call and Put Options
-col1, col2 = st.columns([1,1], gap="small")
+st.markdown("""
+$$
+dv_t = \kappa (\\theta - v_t)dt + \sigma \sqrt{v_t}dW_{v,t} \quad (2)
+$$
+""", unsafe_allow_html=True)
+
+st.markdown("""
+$$
+dW_{S,t} \cdot dW_{v,t} = \\rho dt \quad (3)
+$$
+""", unsafe_allow_html=True)
+
+st.markdown("where $S_t$ is the asset price at time $t$, $v_t$ is the asset volatility at time $t$, $r$ is the risk-free rate, $\\kappa$ is the mean reversion rate of the volatility, $\\theta$ is the long-term mean of the volatility,\
+            and \\sigma is the volatility of the volatility. A Euler-discretized form of Equations 1 and 2 was implemented using a Monte Carlo method to produce the simulation paths plotted below:", unsafe_allow_html=True)
+
+# Run simulation
+S, v, timeline = Full_Heston_Sim(S0=S0, v0=v0, r=r, k=k, theta=theta, sigma=sigma, rho=rho, T=T, N_steps=N_steps, N_sims=N_sims)
+
+# Create Plotly subplot figure
+fig = make_subplots(rows=1, cols=2, subplot_titles=('Asset Prices', 'Asset Volatility'))
+
+for i in range(N_sims):
+    fig.add_trace(
+        go.Scatter(x=timeline, y=S[i, :], mode='lines', name=f'Sim {i+1}', showlegend=False),
+        row=1, col=1
+    )
+
+    fig.add_trace(
+        go.Scatter(x=timeline, y=v[i, :], mode='lines', name=f'Sim {i+1}', showlegend=False),
+        row=1, col=2
+    )
+
+# Update layout
+fig.update_layout(
+    title="Monte Carlo Simulation Results",
+    width=1300,
+    height=500,
+    xaxis_title='Time (Years)',
+    yaxis_title='Asset Price',
+    xaxis2_title='Time (Years)',
+    yaxis2_title='Asset Volatility (%/Year)'
+)
+
+# Display Plotly chart in Streamlit
+st.plotly_chart(fig)
+
+st.info("This page is a work in progress! I am working on adding more depth to this analysis. Stay tuned!")
