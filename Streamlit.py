@@ -102,9 +102,11 @@ with st.sidebar:
 
 st.markdown("")
 st.title("Simulation Overview")
-st.markdown("The Heston Model is described by a set of stochastic differential equations (SDEs) that characterize how the asset price (Equation 1) and its volatility (Equation 2) evolve over time. \
-            These equations involve two Wiener processes, $dW_{S,t}$ for the asset price and $dW_{v,t}$ for the volatility. The two Wiener processes are correlated by a factor $\\rho$, \
+st.markdown("The Heston Model is described by a set of stochastic differential equations (SDEs) that characterize how am asset's price (Equation 1) and volatility (Equation 2) evolve over time. \
+            The stochastic processes are governed by two Wiener processes: $dW_{S,t}$ for the asset price and $dW_{v,t}$ for the volatility. These two Wiener processes are correlated by a factor $\\rho$, \
             as detailed by Equation 3", unsafe_allow_html=True)
+
+## First 3 equations 
 st.markdown("""
 $$
 dS_t = rS_tdt+\sqrt{v_t}S_tdW_{S,t} \quad (1)
@@ -154,7 +156,59 @@ fig.update_layout(
     yaxis2_title='Asset Volatility (%/Year)'
 )
 
-# Display Plotly chart in Streamlit
-st.plotly_chart(fig)
+st.plotly_chart(fig)        # Display Plotly chart in Streamlit
+
+
+col1, col2 = st.columns([1,1], gap="small")
+
+with col1:
+    # Using the custom class for CALL value
+    st.markdown(f"<br><br><br>By overlaying the price and volatility curves of a single simulation, we can observe the correlation effects introduced by the correlation factor $\\rho$. \
+                When $\\rho < 0$, a negative correlation between asset price and volatility is observed; that is, when the volatility of the stock is high, the asset price tends to fall.\
+                Conversely, when $\\rho > 0$, the $S_t$ and $v_t$ curves tend to follow each other.", unsafe_allow_html=True)
+    
+    st.markdown(f"**Try for yourself:** Adjust the $\\rho$ parameter on the left banner between positive and negative values to see how it affects the correlation between $S_t$ and $v_t$. \
+                Note that larger (more positive or more negative) values of $\\rho$ will intensify the correlation.")
+
+    st.markdown(f"**Note**: Correlation effects may be more pronounced in some simulations than in others. You can re-run the simulation by pressing the r key or by selecting \"Rerun\" in the top right corner.")
+
+
+with col2:
+    # Using the custom class for PUT value
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=timeline, y=S[0,:], mode='lines', name='Asset Price', yaxis='y1'))
+    fig.add_trace(go.Scatter(x=timeline, y=v[0,:], mode='lines', name='Asset Volatility', yaxis='y2'))
+
+    # Update layout
+    fig.update_layout(title='Overlayed Price and Volatility Curves of a Single Simulation',
+                    width=900,
+                    height=500,
+                    xaxis_title='Time (Years)',
+                    yaxis_title='',
+                    
+                    yaxis=dict(
+                    title='Price',
+                    showgrid=False,
+                    ),
+
+                    yaxis2=dict(
+                    title='Volatility',
+                    overlaying='y',
+                    side='right',
+                    showgrid=False,
+                    ),
+
+                    xaxis=dict(title='Time',
+                    showgrid=False)
+
+    )
+    st.plotly_chart(fig)
+
+
+
+
+
+
+
 
 st.info("This page is a work in progress! I am working on adding more depth to this analysis. Stay tuned!")
