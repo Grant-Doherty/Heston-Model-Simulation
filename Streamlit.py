@@ -153,7 +153,7 @@ st.markdown("")
 st.header("Background Information")
 st.markdown("""The Heston Model is defined by a set of stochastic differential equations (SDEs) that describe how the price and volatility of an asset could mature on the stock market
             over some time interval $T$. The instantaneous change in the price, and volatility of the asset at time $t$ ($dS_t$ and $dv_t$, respectively) are governed by 
-            [Ornstein-Uhlenbeck processes](https://en.wikipedia.org/wiki/Ornstein%E2%80%93Uhlenbeck_process) (Equations 1 and 2)""", unsafe_allow_html=True)
+            [Ornstein-Uhlenbeck processes](https://en.wikipedia.org/wiki/Ornstein%E2%80%93Uhlenbeck_process) (Equations $1$ and $2$)""", unsafe_allow_html=True)
 
 ## dS_t and dv_t 
 st.markdown("""
@@ -178,8 +178,8 @@ dW_{S,t} \cdot dW_{v,t} = \\rho dt \quad (3)
 $$
 """, unsafe_allow_html=True)
 
-st.markdown("""$S_t$ and $v_t$ are price and volatility of the asset at time $t$, and $dt$ is the difference in time between successive solutions. The risk-free rate $r$ (drift constant), 
-            mean reversion rate of the volatility \\kappa, long-term mean of the volatility $\\theta$, and the volatility of the volatility $\\sigma$ are fixed simulation parameters
+st.markdown("""$S_t$ and $v_t$ are price and volatility of the asset at time $t$, and $dt$ is an infinitessimal time element. The risk-free rate $r$ (drift constant), 
+            mean reversion rate of the volatility $\\kappa$, long-term mean of the volatility $\\theta$, and the volatility of the volatility $\\sigma$ are fixed simulation parameters
             (see right banner).
             """, unsafe_allow_html=True)
 
@@ -201,7 +201,7 @@ st.markdown("""
 st.markdown("""given initial conditions $S_0$, $v_0$. $W_v$ and $W_S$ are the correlated wiener processes that are computed using a Monte Carlo approach.""", unsafe_allow_html=True)
 
 st.header("Simulation Breakdown")
-st.markdown(rf"""The plots below are the result $N_{{sims}}={N_sims}$ simulations stepping through Equations 4 and 5 $N_{{steps}}={N_steps}$ times over a $T={T}$ year long time-frame, 
+st.markdown(rf"""The plots below are the result $N_{{sims}}={N_sims}$ simulations stepping through Equations $4$ and $5$ $N_{{steps}}={N_steps}$ times over a $T={T}$ year long time-frame, 
             given the state of the parameters on the left banner.
             """, unsafe_allow_html=True)
 
@@ -295,8 +295,7 @@ with col2:
 
 st.header("Options")
 # Explaining what options are
-st.markdown("""
-Options are contracts that give the owner (the holder of the option) the right, but not the obligation, to buy or sell a specific quantity of an
+st.markdown("""Options are financial contracts that give the owner (the holder of the option) the right, but not the obligation, to buy or sell a specific quantity of an
              underlying asset at a specific strike price, on or before a specified date, depending on the type of option.
              Options can be sold as a call option, or a put option:
 
@@ -370,3 +369,16 @@ with col1:
     st.dataframe(df, use_container_width=True)
 
 st.info("This page is a work in progress! I am working on adding more depth to this analysis. Stay tuned!")
+
+st.header("References")
+
+st.markdown("""
+
+1. **Rouah, F.** *Euler and Milstein Discretization*. [Link](https://frouah.com/finance%20notes/Euler%20and%20Milstein%20Discretization.pdf).
+   
+2. **Heston, S.** (1993). *A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options*.  \
+            The Review of Financial Studies. [Link](A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options).
+
+3. **Haugh, M.** (2016). *The Black-Scholes Model*. Foundations of Financial Engineering. [Link](https://www.columbia.edu/~mh2078/FoundationsFE/BlackScholes.pdf).
+
+""")
