@@ -8,15 +8,16 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import importlib
-import inspect
 
-# Import the utils module
-utils = importlib.import_module('utils')
+utils_functions = [
+    'Heston_Sim',
+    'Payoff'
+]
 
-# Loop over all members of the utils module
-for name, func in inspect.getmembers(utils, inspect.isfunction):
-    # Assign the function to a global variable with the same name
-    globals()[name] = func
+for func_name in utils_functions:
+    module = importlib.import_module('utils')  # Import the entire utils module
+    globals()[func_name] = getattr(module, func_name)  # Assign the function to a global variable
+
 
 # Initial parameters
 S0 = 100.0          
