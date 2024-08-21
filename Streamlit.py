@@ -353,7 +353,7 @@ st.markdown(rf"""**NOTE:** This page compiles linearly and the information below
 """, unsafe_allow_html=True)
 
 # Beginning of the next section. Re-establish the variables and run heston agian. 
-N_steps_const = 250
+N_steps_const = 252
 N_sims_const = 500
 S_T,_,_ = Final_Heston_Sim(S0=S0, v0=v0, r=r, k=k, theta=theta, sigma=sigma, rho=rho, T=T, N_steps=N_steps_const, N_sims=N_sims_const)
 Call_price, Put_price = payoff(S_T,r=r, T=T, K=K)
