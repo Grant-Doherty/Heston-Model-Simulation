@@ -7,100 +7,16 @@ from scipy.stats import norm
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
+import importlib
+import inspect
 
-# Function for Monte Carlo simulation of the Heston model
-def Full_Heston_Sim(S0, v0, r, k, theta, sigma, rho, T, N_steps, N_sims):
-    """
-    Performs a Monte Carlo simulation of the Heston Model under risk-neutral dynamics to price vanilla options. 
+# Import the utils module
+utils = importlib.import_module('utils')
 
-    Args:   
-            S0: Initial asset price (dollars)
-            v0: Initial asset volatility ()
-            r: Risk-free rate
-            k (kappa): Velocity of mean reversion of the variance
-            theta: Long-term variance mean
-            sigma: Volatility of the variance (vol of vol)
-            rho: Correlation factor between the asset price and variance wiener processes WS & Wv
-
-    Output: 
-            S: Asset price (type: Numpy array, Shape: (N_simulations, N_steps))
-            v: Asset volatility (type: Numpy array, Shape: (N_simulations, N_steps))
-            timeline: Simulation time array (type: Numpy array, size(N_steps), bounds(0, T))
-    """
-
-    # Initialize asset price and variance arrays, and set initial conditions
-    S = np.zeros((N_sims, N_steps))
-    v = np.zeros((N_sims, N_steps))
-    v[:, 0], S[:,0] = v0, S0
-
-    timeline = np.linspace(0, T, N_steps)   # Time array, size=N_steps
-    dt = T/(N_steps-1)                      # Time step size
-
-    mu = np.array([0, 0])       # Average value for WS & Wv. Values are 0 to represent the standard normal dist.
-    cov = np.matrix([[1, rho],  # Covanriance matrix. Diagonal elements represent the variance of each sampling process
-                    [rho, 1]])  # diagonal elements represent the correlation between the two factors
-    
-    # Creating (N_sims, N_steps) array for wiener process factors
-    W = ss.multivariate_normal.rvs(mean=mu, cov=cov, size=(N_sims, N_steps - 1))    # N_steps-1 since v0 and S0 are accounted for. 
-    WS = W[:, :, 0]  # Asset Brownian motion
-    Wv = W[:, :, 1]  # Variance Brownian motion
-
-    for j in range(N_sims):
-        for idx, i in enumerate(timeline[1:]):
-            v[j, idx+1] = np.maximum(v[j,idx] + k*(theta-v[j,idx])*dt + sigma*np.sqrt(v[j,idx]*dt) * Wv[j,idx], 0)
-            S[j, idx+1] = S[j,idx] * np.exp( (r - 0.5*v[j,idx])*dt + np.sqrt(v[j,idx]*dt)*WS[j,idx] )
-
-#     print(f"Final Variance: {np.mean(v[:,-1])} per unit time")
-#     print(f"Final Mean Asset Price: ${np.mean(S[:,-1])}")
-
-    return S, v, timeline
-
-def Final_Heston_Sim(S0, v0, r, k, theta, sigma, rho, T, N_steps, N_sims):
-
-    """
-    Performs a Monte Carlo simulation of the Heston Model under risk-neutral dynamics to price vanilla options. 
-
-    Args:   
-            S0: Initial asset price (dollars)
-            v0: Initial asset volatility ()
-            r: Risk-free rate
-            k (kappa): Velocity of mean reversion of the variance
-            theta: Long-term variance mean
-            sigma: Volatility of the variance (vol of vol)
-            rho: Correlation factor between the asset price and variance wiener processes WS & Wv
-
-    Output: 
-            v_T: Asset variance at maturity(type: Numpy array, Shape: (N_simulations))
-            S_T: Asset price at maturity (type: Numpy array, Shape: (N_simulations))
-            timeline: Simulation time array (type: Numpy array, size(N_steps), bounds(0, T))
-    """
-
-    # Initialize variance and asset price arrays, and set initial conditions
-    v = np.zeros((N_sims, N_steps))
-    S = np.zeros((N_sims, N_steps))
-    v[:, 0], S[:,0] = v0, S0
-
-    timeline = np.linspace(0, T, N_steps)
-    dt = T/(N_steps-1)
-
-    mu = np.array([0, 0])
-    cov = np.matrix([[1, rho],
-                    [rho, 1]])
-    W = ss.multivariate_normal.rvs(mean=mu, cov=cov, size=(N_sims, N_steps - 1))    # N_steps-1 since v0 and S0 are accounted for. 
-    WS = W[:, :, 0]  # Stock Brownian motion:     W_1
-    Wv = W[:, :, 1]  # Variance Brownian motion:  W_2
-
-    for j in range(N_sims):
-        for idx, i in enumerate(timeline[1:]):
-            v[j, idx+1] = np.maximum(v[j,idx] + k*(theta-v[j,idx])*dt + sigma*np.sqrt(v[j,idx]*dt) * Wv[j,idx], 0)
-            S[j, idx+1] = S[j,idx] * np.exp( (r - 0.5*v[j,idx])*dt + np.sqrt(v[j,idx]*dt)*WS[j,idx] )
-
-    return S[:,-1], v[:,-1], timeline
-
-def payoff(S, r, T, K):
-    P_call = np.exp(-r*T) * np.mean(np.maximum(S-K,0))
-    P_put = np.exp(-r*T) * np.mean(np.maximum(K-S,0))
-    return P_call, P_put
+# Loop over all members of the utils module
+for name, func in inspect.getmembers(utils, inspect.isfunction):
+    # Assign the function to a global variable with the same name
+    globals()[name] = func
 
 # Initial parameters
 S0 = 100.0          
@@ -206,7 +122,7 @@ st.markdown(rf"""The plots below are the result $N_{{sims}}={N_sims}$ simulation
             """, unsafe_allow_html=True)
 
 # Run simulation
-S, v, timeline = Full_Heston_Sim(S0=S0, v0=v0, r=r, k=k, theta=theta, sigma=sigma, rho=rho, T=T, N_steps=N_steps, N_sims=N_sims)
+S, v, timeline = Heston_Sim(S0=S0, v0=v0, r=r, k=k, theta=theta, sigma=sigma, rho=rho, T=T, N_steps=N_steps, N_sims=N_sims)
 
 # Create Plotly subplot figure
 fig = make_subplots(rows=1, cols=2, subplot_titles=('Asset Price', 'Asset Volatility'))
@@ -355,8 +271,8 @@ st.markdown(rf"""**NOTE:** This page compiles linearly and the information below
 # Beginning of the next section. Re-establish the variables and run heston agian. 
 N_steps_const = 252
 N_sims_const = 500
-S_T,_,_ = Final_Heston_Sim(S0=S0, v0=v0, r=r, k=k, theta=theta, sigma=sigma, rho=rho, T=T, N_steps=N_steps_const, N_sims=N_sims_const)
-Call_price, Put_price = payoff(S_T,r=r, T=T, K=K)
+S_T,_,_ = Heston_Sim(S0=S0, v0=v0, r=r, k=k, theta=theta, sigma=sigma, rho=rho, T=T, N_steps=N_steps_const, N_sims=N_sims_const, Final=True)
+Call_price, Put_price = Payoff(S_T,r=r, T=T, K=K)
 
 
 df = pd.DataFrame({

@@ -4,4 +4,6 @@ matplotlib
 scipy
 plotly
 pandas
+importlib
+inspect
 
