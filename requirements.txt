@@ -5,5 +5,3 @@ scipy
 plotly
 pandas
 importlib
-inspect
-
